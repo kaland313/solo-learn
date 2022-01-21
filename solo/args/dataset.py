@@ -37,6 +37,8 @@ def dataset_args(parser: ArgumentParser):
         "custom",
     ]
 
+    SUPPORTED_DATALOADERS = ["torchvision", "dali", "ffcv"]
+
     parser.add_argument("--dataset", choices=SUPPORTED_DATASETS, type=str, required=True)
 
     # dataset path
@@ -44,8 +46,8 @@ def dataset_args(parser: ArgumentParser):
     parser.add_argument("--train_dir", type=Path, default=None)
     parser.add_argument("--val_dir", type=Path, default=None)
 
+    parser.add_argument("--dataloader", choices=SUPPORTED_DATALOADERS)
     # dali (imagenet-100/imagenet/custom only)
-    parser.add_argument("--dali", action="store_true")
     parser.add_argument("--dali_device", type=str, default="gpu")
 
 

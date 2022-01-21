@@ -19,7 +19,9 @@
 
 import os
 from pprint import pprint
+from types import MethodType
 
+import custom_PTL_methods
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import WandbLogger
@@ -30,8 +32,7 @@ from solo.utils.auto_resumer import AutoResumer
 
 try:
     from solo.methods.dali import PretrainABC
-except ImportError as e:
-    print(e)
+except ImportError:
     _dali_avaliable = False
 else:
     _dali_avaliable = True
@@ -42,6 +43,7 @@ except ImportError:
     _umap_available = False
 else:
     _umap_available = True
+
 
 import types
 
@@ -66,7 +68,7 @@ def main():
         assert args.method == "wmse"
 
     MethodClass = METHODS[args.method]
-    if args.dali:
+    if args.dataloader == "dali":
         assert (
             _dali_avaliable
         ), "Dali is not currently avaiable, please install it first with [dali]."
@@ -75,7 +77,7 @@ def main():
     model = MethodClass(**args.__dict__)
 
     # pretrain dataloader
-    if not args.dali:
+    if args.dataloader == "torchvision":
         # asymmetric augmentations
         if args.unique_augs > 1:
             transform = [
@@ -177,8 +179,15 @@ def main():
         callbacks=callbacks,
         enable_checkpointing=False,
     )
+    if args.dataloader == "ffcv":
+        trainer.fit_loop.epoch_loop.on_run_start = MethodType(
+            custom_PTL_methods.on_run_start, trainer.fit_loop.epoch_loop
+        )
+        trainer.fit_loop.epoch_loop.advance = MethodType(
+            custom_PTL_methods.advance, trainer.fit_loop.epoch_loop
+        )
 
-    if args.dali:
+    if args.dataloader == "dali":
         trainer.fit(model, val_dataloaders=val_loader, ckpt_path=ckpt_path)
     else:
         trainer.fit(model, train_loader, val_loader, ckpt_path=ckpt_path)

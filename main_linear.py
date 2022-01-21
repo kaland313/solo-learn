@@ -45,6 +45,7 @@ except ImportError:
     _dali_avaliable = False
 else:
     _dali_avaliable = True
+
 import types
 
 from solo.methods.linear import LinearModel
