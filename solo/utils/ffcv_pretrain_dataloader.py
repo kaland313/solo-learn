@@ -19,6 +19,7 @@
 
 import os
 from pathlib import Path
+import random
 from typing import Any, Callable, List, Type
 
 import numpy as np
@@ -163,21 +164,24 @@ def imagenet_pipelines(
         device (int, optional): gpu device of the current process. Defaults to 0.
     """
 
+    mean = np.array([0.485, 0.456, 0.406]) * 255
+    std = np.array([0.229, 0.224, 0.225]) * 255
+
     # Data decoding and augmentation
     image_pipeline = [
         RandomResizedCropRGBImageDecoder((crop_size, crop_size), scale=(min_scale, max_scale)),
-        transforms.RandomApply(
-            [transforms.ColorJitter(brightness, contrast, saturation, hue)],
-            p=color_jitter_prob,
-        ),
-        transforms.RandomGrayscale(p=gray_scale_prob),
-        transforms.RandomApply([GaussianBlur()], p=gaussian_prob),
-        transforms.RandomApply([Solarization()], p=solarization_prob),
         RandomHorizontalFlip(flip_prob=horizontal_flip_prob),
         ToTensor(),
         ToDevice(device, non_blocking=True),
         ToTorchImage(),
-        NormalizeImage(mean=(0.485, 0.456, 0.406), std=(0.228, 0.224, 0.225), type=np.float16),
+        transforms.RandomApply(
+            [transforms.ColorJitter(brightness, contrast, saturation, hue)],
+            p=color_jitter_prob,
+        ),
+        # transforms.RandomGrayscale(p=gray_scale_prob),
+        # transforms.RandomApply([GaussianBlur()], p=gaussian_prob),
+        # transforms.RandomApply([Solarization()], p=solarization_prob),
+        NormalizeImage(mean=mean, std=std, type=np.float16),
     ]
     label_pipeline = [IntDecoder(), ToTensor(), Squeeze(), ToDevice(device, non_blocking=True)]
 
@@ -205,12 +209,24 @@ class Wrapper:
     def __init__(self, loaders):
         self.loaders = loaders
 
+    def __getattr__(self, attr):
+        if attr in self.__dict__:
+            return getattr(self, attr)
+        return [getattr(loader, attr) for loader in self.loaders]
+
     def __next__(self):
         all_imgs = []
-        for loader in self.loaders:
+        for loader in self.iters:
             imgs, labels = next(loader)
             all_imgs.append(imgs)
-        return all_imgs, labels
+        return None, all_imgs, labels
+
+    def __iter__(self):
+        self.iters = [iter(loader) for loader in self.loaders]
+        return self
+
+    def __len__(self):
+        return len(self.loaders[0])
 
 
 def prepare_ffcv_dataloader(
@@ -226,10 +242,14 @@ def prepare_ffcv_dataloader(
         train_dataset (Dataset): the name of the dataset.
         batch_size (int, optional): batch size. Defaults to 64.
         num_workers (int, optional): number of workers. Defaults to 4.
+        distributed (bool, optional): if training spawns across multiple gpus. Defaults to False.
+        fit_mem (bool, optional): if the dataset fits ram. Defaults to False.
     Returns:
         Loader: the ffcv training dataloader with the desired dataset.
     """
+
     order = OrderOption.RANDOM if distributed else OrderOption.QUASI_RANDOM
+    seed = random.randint(0, 999999)
     train_loaders = []
     for transform in transforms:
         train_loaders.append(
@@ -242,6 +262,7 @@ def prepare_ffcv_dataloader(
                 drop_last=True,
                 pipelines=transform,
                 distributed=distributed,
+                seed=seed,
             )
         )
     return Wrapper(train_loaders)

@@ -44,6 +44,7 @@ def dataset_args(parser: ArgumentParser):
     # dataset path
     parser.add_argument("--data_dir", type=Path, required=True)
     parser.add_argument("--train_dir", type=Path, default=None)
+    parser.add_argument("--train_ffcv", type=Path, default=None)
     parser.add_argument("--val_dir", type=Path, default=None)
 
     parser.add_argument("--dataloader", default="torchvision", choices=SUPPORTED_DATALOADERS)

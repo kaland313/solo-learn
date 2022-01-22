@@ -40,30 +40,30 @@ class FFCVPretrainABC(ABC):
         unique_augs = self.extra_args["unique_augs"]
         transform_kwargs = self.extra_args["transform_kwargs"]
         num_crops_per_aug = self.extra_args["num_crops_per_aug"]
-        ffcv_fit_mem = self.extra_args["ffcv_fit_mem"]
+        ffcv_fit_mem = True  # self.extra_args["ffcv_fit_mem"]
 
         num_workers = self.extra_args["num_workers"]
         data_dir = Path(self.extra_args["data_dir"])
-        train_ffcv_dataset = self.extra_args["train_dir"]
+        train_ffcv_dataset = self.extra_args["train_ffcv"]
         train_ffcv_dataset = data_dir / train_ffcv_dataset
 
         # handle custom data by creating the needed transforms
         dataset = self.extra_args["dataset"]
         if unique_augs > 1:
-            transform = [
+            transforms = [
                 prepare_ffcv_transform(dataset, device_id, **kwargs)
-                for kwargs in transform_kwargs
-                for _ in num_crops_per_aug
+                for i, kwargs in enumerate(transform_kwargs)
+                for _ in range(num_crops_per_aug[i])
             ]
         else:
-            transform = [
+            transforms = [
                 prepare_ffcv_transform(dataset, device_id, **transform_kwargs)
-                for _ in num_crops_per_aug
+                for _ in range(num_crops_per_aug[0])
             ]
 
         train_loader = prepare_ffcv_dataloader(
             train_ffcv_dataset,
-            pipelines=transform,
+            transforms=transforms,
             batch_size=self.batch_size,
             num_workers=num_workers,
             distributed=num_devices > 1,
