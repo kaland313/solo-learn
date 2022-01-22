@@ -85,3 +85,10 @@ except ImportError:
     pass
 else:
     __all__.append("dali")
+
+try:
+    from solo.methods import ffcv  # noqa: F401
+except ImportError:
+    pass
+else:
+    __all__.append("ffcv")

@@ -46,9 +46,11 @@ def dataset_args(parser: ArgumentParser):
     parser.add_argument("--train_dir", type=Path, default=None)
     parser.add_argument("--val_dir", type=Path, default=None)
 
-    parser.add_argument("--dataloader", choices=SUPPORTED_DATALOADERS)
+    parser.add_argument("--dataloader", default="torchvision", choices=SUPPORTED_DATALOADERS)
     # dali (imagenet-100/imagenet/custom only)
     parser.add_argument("--dali_device", type=str, default="gpu")
+    # ffcv
+    parser.add_argument("--ffcv_fit_mem", action="store_true")
 
 
 def augmentations_args(parser: ArgumentParser):

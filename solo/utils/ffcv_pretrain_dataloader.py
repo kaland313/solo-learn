@@ -1,4 +1,4 @@
-# Copyright 2021 solo-learn development team.
+# Copyright 2022 solo-learn development team.
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
@@ -16,6 +16,7 @@
 # FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
+
 import os
 from pathlib import Path
 from typing import Any, Callable, List, Type
@@ -184,7 +185,7 @@ def imagenet_pipelines(
     return {"image": image_pipeline, "label": label_pipeline}
 
 
-def prepare_transform(dataset: str, **kwargs) -> Any:
+def prepare_ffcv_transform(dataset: str, device: int, **kwargs) -> Any:
     """Prepares transforms for a specific dataset. Optionally uses multi crop.
 
     Args:
@@ -195,35 +196,26 @@ def prepare_transform(dataset: str, **kwargs) -> Any:
     """
 
     if dataset in ["imagenet", "imagenet100"]:
-        return imagenet_pipelines(**kwargs)
+        return imagenet_pipelines(device=device, **kwargs)
     else:
         raise ValueError(f"{dataset} is not currently supported.")
 
 
-def prepare_n_crop_transform(
-    transforms: List[Callable], num_crops_per_aug: List[int]
-) -> NCropAugmentation:
-    """Turns a single crop transformation to an N crops transformation.
+class Wrapper:
+    def __init__(self, loaders):
+        self.loaders = loaders
 
-    Args:
-        transforms (List[Callable]): list of transformations.
-        num_crops_per_aug (List[int]): number of crops per pipeline.
-
-    Returns:
-        NCropAugmentation: an N crop transformation.
-    """
-
-    assert len(transforms) == len(num_crops_per_aug)
-
-    T = []
-    for transform, num_crops in zip(transforms, num_crops_per_aug):
-        T.append(NCropAugmentation(transform, num_crops))
-    return FullTransformPipeline(T)
+    def __next__(self):
+        all_imgs = []
+        for loader in self.loaders:
+            imgs, labels = next(loader)
+            all_imgs.append(imgs)
+        return all_imgs, labels
 
 
-def prepare_dataloader(
+def prepare_ffcv_dataloader(
     train_ffcv_dataset: str,
-    pipelines: dict,
+    transforms: List[dict],
     batch_size: int = 64,
     num_workers: int = 4,
     distributed: bool = False,
@@ -238,15 +230,18 @@ def prepare_dataloader(
         Loader: the ffcv training dataloader with the desired dataset.
     """
     order = OrderOption.RANDOM if distributed else OrderOption.QUASI_RANDOM
-    train_loader = Loader(
-        train_ffcv_dataset,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        order=order,
-        os_cache=fit_mem,
-        drop_last=True,
-        pipelines=pipelines,
-        distributed=distributed,
-    )
-
-    return train_loader
+    train_loaders = []
+    for transform in transforms:
+        train_loaders.append(
+            Loader(
+                train_ffcv_dataset,
+                batch_size=batch_size,
+                num_workers=num_workers,
+                order=order,
+                os_cache=fit_mem,
+                drop_last=True,
+                pipelines=transform,
+                distributed=distributed,
+            )
+        )
+    return Wrapper(train_loaders)

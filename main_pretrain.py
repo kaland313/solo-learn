@@ -21,7 +21,7 @@ import os
 from pprint import pprint
 from types import MethodType
 
-import custom_PTL_methods
+import custom_plt_methods
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks import LearningRateMonitor
 from pytorch_lightning.loggers import WandbLogger
@@ -33,9 +33,16 @@ from solo.utils.auto_resumer import AutoResumer
 try:
     from solo.methods.dali import PretrainABC
 except ImportError:
-    _dali_avaliable = False
+    _dali_available = False
 else:
-    _dali_avaliable = True
+    _dali_available = True
+
+try:
+    from solo.methods.ffcv import FFCVPretrainABC
+except ImportError:
+    _ffcv_available = False
+else:
+    _ffcv_available = True
 
 try:
     from solo.utils.auto_umap import AutoUMAP
@@ -68,10 +75,13 @@ def main():
         assert args.method == "wmse"
 
     MethodClass = METHODS[args.method]
-    if args.dataloader == "dali":
+    if args.dataloader == "ffcv":
+        assert _ffcv_available, "FFCV is not currently available, please install it first."
+        MethodClass = types.new_class(f"FFCV{MethodClass.__name__}", (FFCVPretrainABC, MethodClass))
+    elif args.dataloader == "dali":
         assert (
-            _dali_avaliable
-        ), "Dali is not currently avaiable, please install it first with [dali]."
+            _dali_available
+        ), "Dali is not currently available, please install it first with [dali]."
         MethodClass = types.new_class(f"Dali{MethodClass.__name__}", (PretrainABC, MethodClass))
 
     model = MethodClass(**args.__dict__)
@@ -181,16 +191,16 @@ def main():
     )
     if args.dataloader == "ffcv":
         trainer.fit_loop.epoch_loop.on_run_start = MethodType(
-            custom_PTL_methods.on_run_start, trainer.fit_loop.epoch_loop
+            custom_plt_methods.on_run_start, trainer.fit_loop.epoch_loop
         )
         trainer.fit_loop.epoch_loop.advance = MethodType(
-            custom_PTL_methods.advance, trainer.fit_loop.epoch_loop
+            custom_plt_methods.advance, trainer.fit_loop.epoch_loop
         )
 
-    if args.dataloader == "dali":
-        trainer.fit(model, val_dataloaders=val_loader, ckpt_path=ckpt_path)
-    else:
+    if args.dataloader == "torchvision":
         trainer.fit(model, train_loader, val_loader, ckpt_path=ckpt_path)
+    else:
+        trainer.fit(model, val_dataloaders=val_loader, ckpt_path=ckpt_path)
 
 
 if __name__ == "__main__":

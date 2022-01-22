@@ -138,7 +138,7 @@ class RandomGaussianBlur:
         Args:
             prob (float, optional): probability of applying random gaussian blur. Defaults to 0.5.
             window_size (int, optional): window size for gaussian blur. Defaults to 23.
-            device (str, optional): device on which the operation will be performe.
+            device (str, optional): device on which the operation will be performed.
                 Defaults to "gpu".
         """
 
