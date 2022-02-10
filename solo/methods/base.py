@@ -81,18 +81,18 @@ class BaseMethod(pl.LightningModule):
 
     _NODE_NAMES = {
         "resnet18": [
-            "layer1.1.relu_1",
-            "layer2.1.relu_1",
-            "layer3.1.relu_1",
-            "layer4.1.relu_1",
-            "flatten",
+            "layer1.1.act1",
+            "layer2.1.act1",
+            "layer3.1.act1",
+            "layer4.1.act1",
+            "global_pool",
         ],
         "resnet50": [
-            "layer1.2.relu_2",
-            "layer2.3.relu_2",
-            "layer3.5.relu_2",
-            "layer4.2.relu_2",
-            "flatten",
+            "layer1.2.act2",
+            "layer2.3.act2",
+            "layer3.5.act2",
+            "layer4.2.act2",
+            "global_pool",
         ],
     }
 
@@ -613,17 +613,15 @@ class BaseMomentumMethod(BaseMethod):
             kwargs["window_size"] = 4
 
         self.momentum_backbone = self.base_model(**kwargs)
+        self.features_dim = self.momentum_backbone.num_features
         if "resnet" in self.backbone_name:
-            self.features_dim = self.momentum_backbone.inplanes
             # remove fc layer
             self.momentum_backbone.fc = nn.Identity()
             if cifar:
                 self.momentum_backbone.conv1 = nn.Conv2d(
-                    3, 64, kernel_size=3, stride=1, padding=2, bias=False
+                    self.momentum_backbone.in_chans, 64, kernel_size=3, stride=1, padding=2, bias=False
                 )
                 self.momentum_backbone.maxpool = nn.Identity()
-        else:
-            self.features_dim = self.momentum_backbone.num_features
 
         initialize_momentum_params(self.backbone, self.momentum_backbone)
 
