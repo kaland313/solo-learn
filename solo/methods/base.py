@@ -46,7 +46,7 @@ from solo.utils.lars import LARSWrapper
 from solo.utils.metrics import accuracy_at_k, weighted_mean
 from solo.utils.momentum import MomentumUpdater, initialize_momentum_params
 from torch.optim.lr_scheduler import CosineAnnealingLR, MultiStepLR
-from torchvision.models import resnet18, resnet50
+from timm.models.resnet import resnet18, resnet50
 from torchvision.models.feature_extraction import create_feature_extractor
 
 
@@ -237,17 +237,15 @@ class BaseMethod(pl.LightningModule):
             kwargs["window_size"] = 4
 
         self.backbone = self.base_model(**kwargs)
+        self.features_dim = self.backbone.num_features
         if "resnet" in self.backbone_name:
-            self.features_dim = self.backbone.inplanes
             # remove fc layer
             self.backbone.fc = nn.Identity()
             if cifar:
                 self.backbone.conv1 = nn.Conv2d(
-                    3, 64, kernel_size=3, stride=1, padding=2, bias=False
+                    self.backbone.in_chans, 64, kernel_size=3, stride=1, padding=2, bias=False
                 )
                 self.backbone.maxpool = nn.Identity()
-        else:
-            self.features_dim = self.backbone.num_features
 
         self.node_names = BaseMethod._NODE_NAMES.get(backbone, None)
         self.supports_multilevel = self.node_names is not None
