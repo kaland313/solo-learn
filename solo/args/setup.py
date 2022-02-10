@@ -39,7 +39,7 @@ else:
     _umap_available = True
 
 
-def parse_args_pretrain() -> argparse.Namespace:
+def parse_args_pretrain(add_custom_args_fn=None) -> argparse.Namespace:
     """Parses dataset, augmentation, pytorch lightning, model specific and additional args.
 
     First adds shared args such as dataset, augmentation and pytorch lightning args, then pulls the
@@ -84,6 +84,9 @@ def parse_args_pretrain() -> argparse.Namespace:
 
     if temp_args.auto_resume:
         parser = AutoResumer.add_autoresumer_args(parser)
+    
+    if callable(add_custom_args_fn):
+        parser = add_custom_args_fn(parser)
 
     # parse args
     args = parser.parse_args()
