@@ -783,7 +783,7 @@ class BaseMomentumMethod(BaseMethod):
         return {**outs, **momentum_outs}
 
     def on_train_batch_end(
-        self, outputs: Dict[str, Any], batch: Sequence[Any], batch_idx: int, dataloader_idx: int
+        self, outputs: Dict[str, Any], batch: Sequence[Any], batch_idx: int, dataloader_idx: int = None
     ):
         """Performs the momentum update of momentum pairs using exponential moving average at the
         end of the current training step if an optimizer step was performed.
