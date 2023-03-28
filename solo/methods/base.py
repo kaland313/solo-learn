@@ -517,10 +517,13 @@ class BaseMethod(pl.LightningModule):
         outs["acc1"] = sum(outs["acc1"]) / self.num_large_crops
         outs["acc5"] = sum(outs["acc5"]) / self.num_large_crops
 
+        contrastive_acc = self.compute_contrastive_acc(outs['feats'][0], outs['feats'][1])
+
         metrics = {
             "train_class_loss": outs["loss"],
             "train_acc1": outs["acc1"],
             "train_acc5": outs["acc5"],
+            "contrastive_acc": contrastive_acc,
         }
 
         self.log_dict(metrics, on_epoch=True, sync_dist=True)
@@ -533,7 +536,23 @@ class BaseMethod(pl.LightningModule):
                 train_targets=targets[mask],
             )
 
-        return outs
+        return outs  
+    
+    @staticmethod
+    def compute_contrastive_acc(features_0, features_1):
+        # Compute pairwise cosine similarity between the feature vector of each sample
+        features_0 = torch.nn.functional.normalize(features_0.detach(), dim=1) # shape (batch_size, embedding_dim)
+        features_1 = torch.nn.functional.normalize(features_1.detach(), dim=1) # shape (batch_size, embedding_dim)
+        similarities = torch.matmul(features_0, features_1.T)  # shape (batch_size, batch_size)
+
+        # To each sample in a minibatch we assign the sample with the highest similarity
+        contrastive_preds = torch.argmax(torch.concat([similarities, similarities.T], dim=0), dim=1)
+
+        batch_size = features_0.shape[0]
+        contrastive_labels = torch.concat([torch.arange(batch_size), torch.arange(batch_size)], dim=0)
+
+        contrastive_acc = torch.sum(contrastive_preds.cpu() == contrastive_labels) / contrastive_preds.shape[0]
+        return contrastive_acc
 
     def base_validation_step(self, X: torch.Tensor, targets: torch.Tensor) -> Dict:
         """Allows user to re-write how the forward step behaves for the validation_step.
