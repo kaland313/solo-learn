@@ -802,6 +802,9 @@ class BaseMomentumMethod(BaseMethod):
             "momentum_" + k: [out[k] for out in momentum_outs] for k in momentum_outs[0].keys()
         }
 
+        contrastive_acc = self.compute_contrastive_acc(momentum_outs["momentum_feats"][0], momentum_outs["momentum_feats"][1])
+        self.log_dict({"contrastive_acc_momentum": contrastive_acc}, on_epoch=True, on_step=False, sync_dist=True)
+
         if self.momentum_classifier is not None:
             # momentum loss and stats
             momentum_outs["momentum_loss"] = (
