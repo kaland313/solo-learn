@@ -518,12 +518,12 @@ class BaseMethod(pl.LightningModule):
         outs["acc5"] = sum(outs["acc5"]) / self.num_large_crops
 
         contrastive_acc = self.compute_contrastive_acc(outs["feats"][0], outs["feats"][1])
-
+        self.log_dict({"contrastive_acc": contrastive_acc,}, on_epoch=True, on_step=False, sync_dist=True)
+        
         metrics = {
             "train_class_loss": outs["loss"],
             "train_acc1": outs["acc1"],
             "train_acc5": outs["acc5"],
-            "contrastive_acc": contrastive_acc,
         }
 
         self.log_dict(metrics, on_epoch=True, sync_dist=True)
