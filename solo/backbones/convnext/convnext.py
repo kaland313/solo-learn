@@ -20,7 +20,7 @@
 # Adapted from timm https://github.com/rwightman/pytorch-image-models/blob/master/timm/
 
 from timm.models.convnext import _create_convnext
-from timm.models.registry import register_model
+from timm.models import register_model
 
 
 @register_model

@@ -19,7 +19,7 @@
 
 # Adapted from timm https://github.com/rwightman/pytorch-image-models/blob/master/timm/
 
-from timm.models.registry import register_model
+from timm.models import register_model
 from timm.models.swin_transformer import _create_swin_transformer
 
 
